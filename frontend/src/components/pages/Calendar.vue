@@ -22,49 +22,58 @@
           (timestamp) => new Date(timestamp.date).getMonth() + 1 + ' /'
         "
         @click:event="showEvent"
+        @click:day="initEvent"
       ></v-calendar>
     </v-sheet>
+
     <v-dialog :value="event !== null" @click:outside="closeDialog" width="600">
-      <EventDetailDialog v-if="event !== null" />
+      <EventDetailDialog v-if="event !== null && !isEditMode" />
+      <EventFormDialog v-if="event !== null && isEditMode" />
     </v-dialog>
   </div>
 </template>
 
 <script>
-import { mapGetters, mapActions } from "vuex";
 import { format } from "date-fns";
-import EventDetailDialog from "./EventDetailDialog.vue";
+import { mapGetters, mapActions } from "vuex";
+import EventDetailDialog from "../events/EventDetailDialog";
+import EventFormDialog from "../events/EventFormDialog";
+import { getDefaultStartAndEnd } from "../../functions/datetime";
+
 export default {
   name: "Calendar",
   components: {
     EventDetailDialog,
+    EventFormDialog,
   },
   data: () => ({
     value: format(new Date(), "yyyy/MM/dd"),
-    dialogMessage: "",
   }),
   computed: {
-    ...mapGetters("events", ["events"]),
-    ...mapGetters("events", ["events", "event"]),
+    ...mapGetters("events", ["events", "event", "isEditMode"]),
     title() {
-      return format(new Date(this.value), "yyyy年M月");
+      return format(new Date(this.value), "yyyy年 M月");
     },
   },
   methods: {
-    ...mapActions("events", ["fetchEvents"]),
-    ...mapActions("events", ["fetchEvents", "setEvent"]),
+    ...mapActions("events", ["fetchEvents", "setEvent", "setEditMode"]),
     setToday() {
       this.value = format(new Date(), "yyyy/MM/dd");
     },
-    showEvent({ event }) {
-      this.dialogMessage = event.name;
+    showEvent({ nativeEvent, event }) {
       this.setEvent(event);
+      nativeEvent.stopPropagation();
     },
     closeDialog() {
       this.setEvent(null);
+      this.setEditMode(false);
+    },
+    initEvent({ date }) {
+      date = date.replace(/-/g, "/");
+      const [start, end] = getDefaultStartAndEnd(date);
+      this.setEvent({ name: "", start, end, timed: true });
+      this.setEditMode(true);
     },
   },
 };
 </script>
-
-<style></style>
